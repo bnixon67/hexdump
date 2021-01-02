@@ -45,7 +45,7 @@ func main() {
 	// open file provided on command line
 	file, err := os.Open(os.Args[1])
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		return
 	}
 	defer file.Close()
@@ -59,13 +59,21 @@ func main() {
 
 	for {
 		// read a buffer size chunk of the file
-		bytesRead, err := file.Read(buffer)
+		// use ReadFull to avoid incomplete reads, e.g. /dev/random
+		bytesRead, err := io.ReadFull(file, buffer)
 		if err != nil {
-			if err != io.EOF {
-				fmt.Println(err)
-			}
 			// exit loop on EOF
-			break
+			if err == io.EOF {
+				break
+			}
+
+			// display error if not UnexpectedEOF
+			if err != io.ErrUnexpectedEOF {
+				fmt.Fprintln(os.Stderr, err)
+				return
+			}
+
+			// fall through on UnexpectedEOF
 		}
 
 		// print a line for each chunk read
