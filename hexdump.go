@@ -22,35 +22,26 @@ import (
 	"os"
 )
 
-// Usage prints usage information for the program
-func Usage() {
-	fmt.Printf("usage: %s file\n", os.Args[0])
-}
-
-// IsPrintable determines if a byte is in the range of ASCII printable characters
-func IsPrintable(c byte) bool {
-	if c >= ' ' && c <= '~' {
+// IsPrintable returns true if the byte b is in the range of printable ASCII
+// characters, otherwise returns false.
+func IsPrintable(b byte) bool {
+	if b >= ' ' && b <= '~' {
 		return true
 	}
 	return false
 }
 
-func main() {
-	// must provide a command line argument for the file name
-	if len(os.Args) != 2 {
-		Usage()
-		return
-	}
-
-	// open file provided on command line
-	file, err := os.Open(os.Args[1])
+// HexDump outputs a file provided on the command line
+func HexDump(filename string) error {
+	// open filename provided
+	file, err := os.Open(filename)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
+		return err
 	}
 	defer file.Close()
 
-	// buffer used to read the file in chunks
+	// define buffer to read the file in chunks
+	// small size may not be performant, but simplifies program
 	const bufferSize = 16
 	buffer := make([]byte, bufferSize)
 
@@ -59,7 +50,8 @@ func main() {
 
 	for {
 		// read a buffer size chunk of the file
-		// use ReadFull to avoid incomplete reads, e.g. /dev/random
+		// use ReadFull to avoid incomplete reads
+		// for files like /dev/random
 		bytesRead, err := io.ReadFull(file, buffer)
 		if err != nil {
 			// exit loop on EOF
@@ -69,16 +61,16 @@ func main() {
 
 			// display error if not UnexpectedEOF
 			if err != io.ErrUnexpectedEOF {
-				fmt.Fprintln(os.Stderr, err)
-				return
+				return err
 			}
 
 			// fall through on UnexpectedEOF
 		}
 
 		// print a line for each chunk read
-		// offset  bytes_values_in_hex  printable_bytes
+		// offset
 		fmt.Printf("%08x  ", offset)
+		// bytes values in hex
 		for n := 0; n < len(buffer); n++ {
 			if n < bytesRead {
 				fmt.Printf("%02x ", buffer[n])
@@ -86,6 +78,7 @@ func main() {
 				fmt.Print("   ")
 			}
 		}
+		// printable_bytes
 		for n := 0; n < len(buffer); n++ {
 			if n < bytesRead {
 				if IsPrintable(buffer[n]) {
@@ -100,6 +93,8 @@ func main() {
 		offset += bytesRead
 	}
 
-	// print total bytes read
+	// total bytes read
 	fmt.Printf("%08x\n", offset)
+
+	return nil
 }
