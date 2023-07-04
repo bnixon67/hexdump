@@ -1,5 +1,5 @@
 /*
-Copyright 2021 Bill Nixon
+Copyright 2023 Bill Nixon
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,12 +22,12 @@ import (
 )
 
 const (
-	EXIT_OK = iota
-	EXIT_ERR_USAGE
-	EXIT_ERR
+	EXIT_OK        = iota // Exit status for successful execution
+	EXIT_ERR_USAGE        // Exit status for incorrect usage
+	EXIT_ERR              // Exit status for general error
 )
 
-// Usage prints usage information for the program
+// Usage prints usage information for the program.
 func Usage(name string) {
 	fmt.Printf("usage: %s file\n", name)
 }
@@ -39,11 +39,12 @@ func main() {
 		os.Exit(EXIT_ERR_USAGE)
 	}
 
-	err := HexDump(os.Args[1])
+	s, err := HexDump(os.Args[1])
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(EXIT_ERR)
 	}
+	fmt.Print(s)
 
 	os.Exit(EXIT_OK)
 }

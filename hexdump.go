@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 )
 
-// IsPrintable returns true if the byte b is in the range of printable ASCII
-// characters, otherwise returns false.
+// IsPrintable determines if b is a printable ASCII characters.
 func IsPrintable(b byte) bool {
 	if b >= ' ' && b <= '~' {
 		return true
@@ -31,70 +31,75 @@ func IsPrintable(b byte) bool {
 	return false
 }
 
-// HexDump outputs a file provided on the command line
-func HexDump(filename string) error {
-	// open filename provided
+// HexDump reads a file and returns its contents as a formatted hex dump.
+func HexDump(filename string) (string, error) {
+	// Open the file for reading
 	file, err := os.Open(filename)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer file.Close()
 
-	// define buffer to read the file in chunks
-	// small size may not be performant, but simplifies program
+	// Create a string builder to store the formatted output
+	var sb strings.Builder
+
+	// Create a buffer to read the file in chunks
+	// The small size may not be performant, but simplifies program logic
 	const bufferSize = 16
 	buffer := make([]byte, bufferSize)
 
-	// offset stores the current number of bytes read
+	// Initialize offset for tracking the number of bytes read
 	offset := 0
 
 	for {
-		// read a buffer size chunk of the file
-		// use ReadFull to avoid incomplete reads
-		// for files like /dev/random
+		// Read a chunk of data from the file
+		// use ReadFull to avoid incomplete reads like /dev/random
 		bytesRead, err := io.ReadFull(file, buffer)
 		if err != nil {
-			// exit loop on EOF
 			if err == io.EOF {
+				// If EOF is encountered, break the loop
 				break
 			}
 
-			// display error if not UnexpectedEOF
 			if err != io.ErrUnexpectedEOF {
-				return err
+				// Return error if it's not an UnexpectedEOF
+				return "", err
 			}
 
 			// fall through on UnexpectedEOF
 		}
 
-		// print a line for each chunk read
-		// offset
-		fmt.Printf("%08x  ", offset)
-		// bytes values in hex
-		for n := 0; n < len(buffer); n++ {
-			if n < bytesRead {
-				fmt.Printf("%02x ", buffer[n])
+		// Format and write the offset
+		sb.WriteString(fmt.Sprintf("%08x  ", offset))
+
+		// Write the bytes in hexadecimal format
+		for i := 0; i < len(buffer); i++ {
+			if i < bytesRead {
+				sb.WriteString(fmt.Sprintf("%02x ", buffer[i]))
 			} else {
-				fmt.Print("   ")
+				sb.WriteString("   ")
 			}
 		}
-		// printable_bytes
-		for n := 0; n < len(buffer); n++ {
-			if n < bytesRead {
-				if IsPrintable(buffer[n]) {
-					fmt.Printf("%c", buffer[n])
+
+		// Write the printable bytes
+		for i := 0; i < len(buffer); i++ {
+			if i < bytesRead {
+				if IsPrintable(buffer[i]) {
+					sb.WriteByte(buffer[i])
 				} else {
-					fmt.Printf("%c", '.')
+					sb.WriteByte('.')
 				}
 			}
 		}
-		fmt.Println()
 
+		sb.WriteString("\n")
+
+		// Update the offset
 		offset += bytesRead
 	}
 
-	// total bytes read
-	fmt.Printf("%08x\n", offset)
+	// Write the total number of bytes read
+	sb.WriteString(fmt.Sprintf("%08x\n", offset))
 
-	return nil
+	return sb.String(), nil
 }
